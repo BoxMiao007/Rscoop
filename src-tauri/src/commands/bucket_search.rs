@@ -1,7 +1,7 @@
 use super::bucket_parser::{self, BucketFilterOptions};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{AppHandle, State};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchableBucket {
@@ -168,11 +168,12 @@ fn get_verified_buckets() -> Vec<SearchableBucket> {
 
 // Parse the massive bucket list from GitHub using efficient parser
 async fn fetch_expanded_bucket_list(
+    app: &AppHandle,
     filters: Option<BucketFilterOptions>,
 ) -> Result<Vec<SearchableBucket>, String> {
     log::info!("Fetching expanded bucket list using efficient parser...");
 
-    let bucket_map = bucket_parser::get_cached_buckets(filters).await?;
+    let bucket_map = bucket_parser::get_cached_buckets(app, filters).await?;
     let buckets: Vec<SearchableBucket> = bucket_map.into_values().collect();
 
     log::info!("Retrieved {} buckets from cache/parser", buckets.len());
@@ -217,6 +218,7 @@ fn sort_buckets(buckets: &mut [SearchableBucket], sort_by: &str) {
 
 #[tauri::command]
 pub async fn search_buckets(
+    app: AppHandle,
     request: BucketSearchRequest,
     _state: State<'_, AppState>,
 ) -> Result<BucketSearchResponse, String> {
@@ -249,7 +251,7 @@ pub async fn search_buckets(
             verified_buckets.iter().map(|b| b.name.clone()).collect();
 
         // Get expanded buckets from cache/parser with filters
-        let mut expanded_buckets = fetch_expanded_bucket_list(filters).await?;
+        let mut expanded_buckets = fetch_expanded_bucket_list(&app, filters).await?;
 
         // Mark verified buckets in the expanded list
         for bucket in &mut expanded_buckets {

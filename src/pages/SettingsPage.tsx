@@ -1,6 +1,7 @@
 import { createSignal, createEffect, onMount, For, Show } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import ScoopConfiguration from "../components/page/settings/ScoopConfiguration";
+import ProxySettings from "../components/page/settings/ProxySettings";
 import VirusTotalSettings from "../components/page/settings/VirusTotalSettings";
 import WindowBehaviorSettings from "../components/page/settings/WindowBehaviorSettings";
 import HeldPackagesManagement from "../components/page/settings/HeldPackagesManagement";
@@ -36,6 +37,7 @@ function SettingsPage(props: SettingsPageProps) {
     const TABS = [
         { key: 'automation', labelKey: "settings.tabAutomation" },
         { key: 'management', labelKey: "settings.tabManagement" },
+        { key: 'network', labelKey: "settings.tabNetwork" },
         { key: 'security', labelKey: "settings.tabSecurity" },
         { key: 'window', labelKey: "settings.tabWindow" },
         { key: 'tray', labelKey: "settings.tabTray" },
@@ -141,6 +143,13 @@ function SettingsPage(props: SettingsPageProps) {
                                 operationInProgress={isUnholding()}
                             />
                             <ExportImportSettings />
+                        </div>
+                    </Show>
+
+                    {/* Network Tab */}
+                    <Show when={activeTab() === 'network'}>
+                        <div id={panelId("network")} role="tabpanel" aria-labelledby={tabId("network")} tabindex="0" class="space-y-6 sm:space-y-8">
+                            <ProxySettings />
                         </div>
                     </Show>
 

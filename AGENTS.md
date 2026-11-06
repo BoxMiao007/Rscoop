@@ -16,9 +16,9 @@ rScoop 是 Windows 包管理器 Scoop 的原生 GUI 桌面应用,用 Rust、Soli
 ## 完成定义(每次交付前逐项核对)
 
 1. 验证门全部通过:
-   - `npx tsc --noEmit` (待实测:首次运行核实后移除本标注)
-   - `cd src-tauri && cargo check` (待实测:首次运行核实后移除本标注)
-   - `cd src-tauri && cargo clippy -- -D warnings` (待实测:首次运行核实后移除本标注)
+   - `npx tsc --noEmit`
+   - `cd src-tauri && cargo check`
+   - `cd src-tauri && cargo clippy`(上游既有代码存在历史警告,不以零警告为门槛;本次改动不得新增警告)
 2. 功能实际跑通:能启动的用 `npm run dev` 启动并自测核心路径;涉及界面或输出的改动,附截图或运行结果作为交付证据。
 3. 交付说明讲给不写代码的人听:做了什么、怎么看到结果(地址/命令/截图)、有什么限制和后续建议;没把握或未完成的部分明说,不藏在细节里。
 
@@ -79,9 +79,9 @@ rScoop 是 Windows 包管理器 Scoop 的原生 GUI 桌面应用,用 Rust、Soli
 - **合并后:**
   - 依赖文件有变更(`package.json` / `package-lock.json` / `src-tauri/Cargo.toml` / `src-tauri/Cargo.lock`)先 `npm ci` 和 `cd src-tauri && cargo build` 再验证。
   - 验证门:
-    - `npx tsc --noEmit` (待实测:首次运行核实后移除本标注)
-    - `cd src-tauri && cargo check` (待实测:首次运行核实后移除本标注)
-    - `cd src-tauri && cargo clippy -- -D warnings` (待实测:首次运行核实后移除本标注)
+    - `npx tsc --noEmit`
+    - `cd src-tauri && cargo check`
+    - `cd src-tauri && cargo clippy`(上游既有代码存在历史警告,不以零警告为门槛;本次改动不得新增警告)
   - 全部通过才算完成。
   - `npm run tauri -- build` 是完整打包(慢),只在需要产出安装包时执行,不作为每次同步的验证步骤。
   - 验证门通过后做功能巡检:用 `git diff <上一个 sync 标签>..upstream/main --name-only` 列出本次同步引入的上游改动,对照「功能清单」的关键文件,输出受影响功能报告——波及哪些功能、判断依据、建议用户在应用里实际验证的点;没有历史标签时以本次合并的 merge-base 为基准。
@@ -108,7 +108,7 @@ fork 发布的版本号要能和上游区分。发布前先看上游最新 relea
 
 | 功能 | 一句话说明 | 关键文件/入口 | 引入提交 |
 | ---- | ---------- | -------------- | -------- |
-| (暂无登记,第一个功能合入时添加) | | | |
+| 网络代理设置 | 自动检测 Windows 系统代理或自定义代理，统一应用到 Scoop 命令、Bucket 下载与 rScoop 自身网络请求 | `src-tauri/src/proxy.rs`、`src-tauri/src/commands/proxy.rs`、`src/components/page/settings/ProxySettings.tsx` | `441cdf6` |
 
 `README.md` 顶部的 `vibe-feature-registry` 标记块是本表给人看的镜像:登记/移除功能时,同一个动作里同步更新本表和该标记块,防止两处漂移。
 

@@ -15,10 +15,16 @@ where
 {
     let scoop_root = app.state::<AppState>().scoop_path();
     let inner = build_scoop_script(&scoop_root, args);
-    if is_pwsh_enabled(app) {
+    let proxy_envs = crate::proxy::proxy_env_vars(&app);
+    let cmd = if is_pwsh_enabled(app) {
         execra::Command::pwsh(inner).tags(["scoop".to_string()])
     } else {
         execra::Command::powershell(inner).tags(["scoop".to_string()])
+    };
+    if proxy_envs.is_empty() {
+        cmd
+    } else {
+        cmd.envs(proxy_envs)
     }
 }
 

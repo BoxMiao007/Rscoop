@@ -15,6 +15,7 @@ pub mod manifest;
 pub mod operations;
 pub mod path;
 pub mod profile;
+pub mod proxy;
 pub mod release_notes;
 pub mod scoop;
 pub mod scoop_interpreter;

@@ -7,6 +7,7 @@ mod launch;
 mod models;
 mod manifest_review;
 mod operations;
+mod proxy;
 mod scheduler;
 mod state;
 mod tray;
@@ -299,6 +300,10 @@ pub fn run() {
             commands::settings::set_scoop_path,
             commands::settings::has_virustotal_api_key,
             commands::settings::set_virustotal_api_key,
+            commands::proxy::get_proxy_config,
+            commands::proxy::set_proxy_config,
+            commands::proxy::detect_system_proxy,
+            commands::proxy::test_proxy_connection,
             commands::doctor::checkup::run_scoop_checkup,
             commands::doctor::checkup::open_windows_settings_page,
             commands::doctor::cache::list_cache_contents,
