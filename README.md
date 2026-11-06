@@ -1,3 +1,16 @@
+<!-- vibe-coding-declaration:begin -->
+> [!IMPORTANT]
+> 本仓库由 AI 开发与维护,所有代码变更均由 AI 执行。
+<!-- vibe-coding-declaration:end -->
+
+<!-- vibe-feature-registry:begin -->
+## 本 Fork 功能清单
+
+| 功能 | 一句话说明 | 关键文件/入口 | 引入提交 |
+| ---- | ---------- | -------------- | -------- |
+| (暂无登记,第一个功能合入时添加) | | | |
+<!-- vibe-feature-registry:end -->
+
 <div align="center">
 
 <img src="pics/logo.png" alt="rScoop" width="280">

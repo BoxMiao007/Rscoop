@@ -4,3 +4,13 @@ dist
 .prototools
 storybook-static
 src-tauri/target-test/
+
+# Sensitive files
+.env
+.env.local
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.json
+credentials.json
