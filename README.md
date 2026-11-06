@@ -8,7 +8,7 @@
 
 | 功能 | 一句话说明 | 关键文件/入口 | 引入提交 |
 | ---- | ---------- | -------------- | -------- |
-| (暂无登记,第一个功能合入时添加) | | | |
+| 网络代理设置 | 自动检测 Windows 系统代理或自定义代理，统一应用到 Scoop 命令、Bucket 下载与 rScoop 自身网络请求 | `src-tauri/src/proxy.rs`、`src-tauri/src/commands/proxy.rs`、`src/components/page/settings/ProxySettings.tsx` | `441cdf6` |
 <!-- vibe-feature-registry:end -->
 
 <div align="center">
