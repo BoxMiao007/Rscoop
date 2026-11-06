@@ -48,7 +48,7 @@ rScoop 是 Windows 包管理器 Scoop 的原生 GUI 桌面应用,用 Rust、Soli
 1. 更新承载版本号的文件(如 `Cargo.toml` 的 `version`、`package.json` 的 `version`);载体有多处时必须同步改成同一个值。
 2. 确认版本号改动已在提交中(未提交时先 `git commit -m "chore(release): <标签>"`),再创建本地 annotated tag:`git tag -a <标签> -m "Release <标签>"`,**不推送**。
 3. 停下并等待用户批准(发布闸门:未获批准不得推送 tag、不得执行 `gh release create`),报告候选版本号与理由。批准前不再产生新提交;若已产生,批准后先删掉本地 tag 重打(未推送的 tag 可以删),再推送。
-4. 获批准后推送 tag 并执行 `gh release create`,Release 正文写清本次版本号与变更内容;`gh` 未认证或仓库无 Release 权限时,只推送 tag 并说明原因,不阻断发布。
+4. 获批准后推送 tag。本仓库的 `release.yml` 会在 tag 推送后自动构建并创建 GitHub Release(含 Scoop manifest 更新),因此**不要再手动执行 `gh release create`**,以免与 CI 冲突。Release 正文来自仓库根 `RELEASE_NOTES.md`,打 tag 前先把它改成本次版本的内容。
 
 验证:宣称发布完成须附 `git tag -l <标签>` 与 `gh release view <标签>` 实际输出,并确认版本号文件与 tag 一致。
 
@@ -101,6 +101,8 @@ fork 发布的版本号要能和上游区分。发布前先看上游最新 relea
 - 例:改功能发布正式版 `1.2.3-fork.1`(标题 `1.2.3-fork.1 (fork)`) → 上游推新代码未发版、版本号没动,同步抢跑 `1.2.3-fork.1-pre.20261004`(Pre-release,标题标 `(upstream)`) → 上游代码版本号改成 1.4.0 仍未发版,再同步发布 `1.4.0-fork.1-pre.20261005`(Pre-release) → 上游正式发布 1.4.0,同步发布正式版 `1.4.0-fork.1`(标题 `1.4.0-fork.1 (upstream)`) → 自己再改,发布 `1.4.0-fork.2`(标题标 `(fork)`)。
 
 版本串全链路统一:代码内版本号(Cargo.toml、package.json 等)、git 标签、GitHub Release、产物文件名都用同一个,不出现两种写法。
+
+**Windows 打包限制**:MSI(WiX)要求预发布后缀只能是数字,`-fork.N` 这种写法无法打进 MSI。因此 fork 发布只构建 **NSIS 安装程序**(`bundle.targets = ["nsis"]`),版本串仍保留 `-fork.N`。`createUpdaterArtifacts` 保持 `false`:fork 发布不做更新签名,用户手动下载安装。
 
 ## 功能清单
 

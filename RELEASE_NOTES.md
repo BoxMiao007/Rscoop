@@ -1,14 +1,15 @@
-### Release Notes 1.11.0
+### Release Notes 1.11.0-fork.1
 
-#### Scoop 0.6.0 Support
+本版本基于上游 rScoop v1.11.0，并新增以下 fork 功能。
 
-* Full support for the renamed scoop-install.json and scoop-manifest.json files. Pre-0.6.0 installs keep working and stay supported until October 2027.
-* New dismissible warning when your Scoop is below 0.6.0, with details and upgrade guidance.
-* More reliable progress and error reporting on Scoop 0.6.0's updated command output.
+#### 网络代理
 
-#### Improvements
+* 设置中新增「网络」标签，支持三种模式：自动检测 Windows 系统代理、自定义代理、直连。
+* 实时显示当前检测到的系统代理，可在保存前测试代理连通性。
+* 代理统一应用于 Scoop 命令、Bucket 搜索目录下载、Bucket 的 git 克隆与更新，以及 rScoop 自身的网络请求。
+* 同步写入 Scoop 的 `config.json`，使 `scoop` 自身的下载行为与应用保持一致。
 
-* Direct URL installs are no longer mistaken for version-pinned installs.
-* Version switching now explains itself on setups without junctions instead of failing silently.
-* Startup no longer fails when the log directory is locked or unwritable; logging falls back to the console.
-* System shim paths display normalized between 32-bit and 64-bit views.
+#### 安装说明
+
+* 本次发布提供 NSIS 安装程序与独立可执行文件，不含自动更新签名，请手动下载安装。
+* Windows MSI 要求预发布后缀为数字，不支持 `-fork.N` 版本串，因此本 fork 版本不提供 MSI 安装包。

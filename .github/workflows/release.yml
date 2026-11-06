@@ -139,32 +139,10 @@ jobs:
       - name: Install project dependencies
         run: npm ci
 
-      # One command builds frontend, compiles Rust, and bundles installers
+      # One command builds frontend, compiles Rust, and bundles the NSIS installer.
+      # Fork builds are not updater-signed; see "Create GitHub Release" below.
       - name: Build & bundle application (Tauri)
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri -- build
-
-      - name: Generate updater artifacts
-        id: updater
-        shell: pwsh
-        run: |
-          $msiPath = "./src-tauri/target/release/bundle/msi/${{ steps.meta.outputs.product }}_${{ steps.meta.outputs.version }}_x64_en-US.msi"
-          $signature = Get-Content -Raw "$msiPath.sig"
-          $date = Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ"
-          $json = @{
-            version = "${{ steps.meta.outputs.version }}"
-            pub_date = $date
-            platforms = @{
-              "windows-x86_64" = @{
-                signature = $signature
-                url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ steps.meta.outputs.product }}_${{ steps.meta.outputs.version }}_x64_en-US.msi"
-              }
-            }
-          } | ConvertTo-Json -Depth 4
-          
-          Set-Content -Path "./update.json" -Value $json
 
       - name: Attest build provenance
         # actions/attest-build-provenance@v4.2.2
@@ -172,9 +150,7 @@ jobs:
         with:
           subject-path: |
             ./src-tauri/target/release/${{ steps.meta.outputs.product }}.exe
-            ./src-tauri/target/release/bundle/msi/${{ steps.meta.outputs.product }}_${{ steps.meta.outputs.version }}_x64_en-US.msi
-            ./src-tauri/target/release/bundle/msi/${{ steps.meta.outputs.product }}_${{ steps.meta.outputs.version }}_x64_en-US.msi.sig
-            ./update.json
+            ./src-tauri/target/release/bundle/nsis/${{ steps.meta.outputs.product }}_${{ steps.meta.outputs.version }}_x64-setup.exe
 
       - name: Create GitHub Release with artifacts
         # ncipollo/release-action@v1
@@ -189,9 +165,7 @@ jobs:
           immutableCreate: true
           artifacts: >-
             ./src-tauri/target/release/${{ steps.meta.outputs.product }}.exe,
-            ./src-tauri/target/release/bundle/msi/${{ steps.meta.outputs.product }}_${{ steps.meta.outputs.version }}_x64_en-US.msi,
-            ./src-tauri/target/release/bundle/msi/${{ steps.meta.outputs.product }}_${{ steps.meta.outputs.version }}_x64_en-US.msi.sig,
-            ./update.json
+            ./src-tauri/target/release/bundle/nsis/${{ steps.meta.outputs.product }}_${{ steps.meta.outputs.version }}_x64-setup.exe
           artifactErrorsFailBuild: true
 
       - name: Checkout main for Scoop manifest update
