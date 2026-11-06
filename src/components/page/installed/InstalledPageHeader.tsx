@@ -102,35 +102,35 @@ function InstalledPageHeader(props: InstalledPageHeaderProps) {
             <Search class="w-5 h-5" />
           </button>
 
-          {/* Update All Button or Status Button */}
-          <Show when={props.updatableCount() > 0}
-            fallback={
-              <button
-                type="button"
-                class={`btn btn-ghost btn-circle tooltip tooltip-bottom ${props.scoopStatus?.()?.is_everything_ok ? "text-success" : ""}`}
-                data-tip={t("installed.checkStatusTooltip")}
-                aria-label={t("installed.checkStatusTooltip")}
-                onClick={props.onCheckStatus}
-                disabled={props.statusLoading?.()}
-              >
-                <Show when={props.statusLoading?.()}
-                  fallback={
-                    <Show when={props.scoopStatus?.() !== null && props.scoopStatus?.() !== undefined}
-                      fallback={<Activity class="w-4 h-4" />}
-                    >
-                      <Show when={props.scoopStatus?.()?.is_everything_ok}
-                        fallback={<CircleAlert class="w-4 h-4 text-warning" />}
-                      >
-                        <CircleCheckBig class="w-4 h-4" />
-                      </Show>
-                    </Show>
-                  }
-                >
-                  <span class="loading loading-spinner loading-sm"></span>
-                </Show>
-              </button>
-            }
+          {/* Status Button — always visible: it refreshes buckets and the update list,
+              so newer versions can still be discovered while updates are pending. */}
+          <button
+            type="button"
+            class={`btn btn-ghost btn-circle tooltip tooltip-bottom ${props.scoopStatus?.()?.is_everything_ok ? "text-success" : ""}`}
+            data-tip={t("installed.checkStatusTooltip")}
+            aria-label={t("installed.checkStatusTooltip")}
+            onClick={props.onCheckStatus}
+            disabled={props.statusLoading?.()}
           >
+            <Show when={props.statusLoading?.()}
+              fallback={
+                <Show when={props.scoopStatus?.() !== null && props.scoopStatus?.() !== undefined}
+                  fallback={<Activity class="w-4 h-4" />}
+                >
+                  <Show when={props.scoopStatus?.()?.is_everything_ok}
+                    fallback={<CircleAlert class="w-4 h-4 text-warning" />}
+                  >
+                    <CircleCheckBig class="w-4 h-4" />
+                  </Show>
+                </Show>
+              }
+            >
+              <span class="loading loading-spinner loading-sm"></span>
+            </Show>
+          </button>
+
+          {/* Update All Button — shown next to the status button, never in its place */}
+          <Show when={props.updatableCount() > 0}>
             <button type="button" class="btn btn-secondary gap-2" onClick={props.onUpdateAll}>
               <CircleArrowUp class="w-4 h-4" />
               <span>{t("installed.updateAll", { count: props.updatableCount() })}</span>
