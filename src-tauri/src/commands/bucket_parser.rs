@@ -4,6 +4,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use tauri::AppHandle;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
@@ -129,6 +130,7 @@ async fn load_cache_from_disk() -> Result<HashMap<String, SearchableBucket>, Str
 
 // Convert markdown table to CSV format with file cleanup
 pub async fn fetch_and_parse_bucket_directory(
+    app: &AppHandle,
     filters: Option<BucketFilterOptions>,
 ) -> Result<HashMap<String, SearchableBucket>, String> {
     let filters = filters.unwrap_or_default();
@@ -136,7 +138,10 @@ pub async fn fetch_and_parse_bucket_directory(
 
     log::info!("Fetching bucket directory from: {}", url);
 
-    let response = reqwest::get(url)
+    let client = crate::proxy::build_http_client(app)?;
+    let response = client
+        .get(url)
+        .send()
         .await
         .map_err(|e| format!("Failed to fetch bucket directory: {}", e))?;
 
@@ -454,6 +459,7 @@ fn parse_encoded_date(date_str: &str) -> String {
 
 // Get cached buckets or fetch if not cached
 pub async fn get_cached_buckets(
+    app: &AppHandle,
     filters: Option<BucketFilterOptions>,
 ) -> Result<HashMap<String, SearchableBucket>, String> {
     // First check memory cache
@@ -513,7 +519,7 @@ pub async fn get_cached_buckets(
     }
 
     log::info!("No cache found, fetching bucket directory...");
-    let buckets = fetch_and_parse_bucket_directory(filters).await?;
+    let buckets = fetch_and_parse_bucket_directory(app, filters).await?;
 
     // Update memory cache
     {

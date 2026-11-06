@@ -201,6 +201,7 @@ fn clone_repository(
     target_path: &Path,
     progress_app: Option<AppHandle>,
     cancel_token: Option<Arc<AtomicBool>>,
+    proxy_config: &crate::proxy::ProxyConfig,
 ) -> Result<Repository, String> {
     log::info!("Cloning repository {} to {:?}", url, target_path);
 
@@ -217,6 +218,7 @@ fn clone_repository(
     // Set up fetch options
     let mut fetch_options = FetchOptions::new();
     fetch_options.remote_callbacks(remote_callbacks);
+    crate::proxy::apply_proxy_to_fetch_options(proxy_config, &mut fetch_options);
 
     // Clone the repository
     let mut builder = git2::build::RepoBuilder::new();
@@ -332,6 +334,7 @@ async fn install_bucket_internal(
     let normalized_url_clone = normalized_url.clone();
     let bucket_path_clone = bucket_path.clone();
     let cancel_token_clone = cancel_token.clone();
+    let proxy_config = crate::proxy::read_proxy_config(app);
 
     let repo_result = tokio::task::spawn_blocking(move || {
         clone_repository(
@@ -339,6 +342,7 @@ async fn install_bucket_internal(
             &bucket_path_clone,
             progress_app,
             cancel_token_clone,
+            &proxy_config,
         )
     })
     .await
@@ -544,9 +548,10 @@ pub async fn update_bucket(
 
     let bucket_name_clone = bucket_name.clone();
     let bucket_path_clone = bucket_path.clone();
+    let proxy_config = crate::proxy::read_proxy_config(&app);
 
     let result = tokio::task::spawn_blocking(move || {
-        update_bucket_sync(&bucket_name_clone, &bucket_path_clone)
+        update_bucket_sync(&bucket_name_clone, &bucket_path_clone, &proxy_config)
     })
     .await
     .map_err(|e| e.to_string())?;
@@ -602,6 +607,7 @@ fn retry_bucket_fetch(
 fn update_bucket_sync(
     bucket_name: &str,
     bucket_path: &Path,
+    proxy_config: &crate::proxy::ProxyConfig,
 ) -> Result<BucketInstallResult, String> {
     // Try to update the repository using git2
     match Repository::open(bucket_path) {
@@ -628,6 +634,7 @@ fn update_bucket_sync(
                     let mut remote = repo.find_remote("origin")?;
                     let mut fetch_options = FetchOptions::new();
                     fetch_options.remote_callbacks(create_remote_callbacks());
+                    crate::proxy::apply_proxy_to_fetch_options(proxy_config, &mut fetch_options);
                     remote.fetch(&[] as &[&str], Some(&mut fetch_options), None)
                 },
                 std::thread::sleep,

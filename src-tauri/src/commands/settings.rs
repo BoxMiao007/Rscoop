@@ -51,7 +51,7 @@ fn get_scoop_config_path() -> Result<PathBuf, String> {
 /// Reads the Scoop configuration file and returns its contents as a JSON map.
 ///
 /// If the file doesn't exist, it returns an empty map.
-fn read_scoop_config() -> Result<Map<String, Value>, String> {
+pub(crate) fn read_scoop_config() -> Result<Map<String, Value>, String> {
     let path = get_scoop_config_path()?;
     if !path.exists() {
         return Ok(Map::new());
@@ -65,7 +65,7 @@ fn read_scoop_config() -> Result<Map<String, Value>, String> {
 /// Writes the given JSON map to the Scoop configuration file.
 ///
 /// This will create the directory and file if they don't exist.
-fn write_scoop_config(config: &Map<String, Value>) -> Result<(), String> {
+pub(crate) fn write_scoop_config(config: &Map<String, Value>) -> Result<(), String> {
     let path = get_scoop_config_path()?;
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
@@ -74,6 +74,49 @@ fn write_scoop_config(config: &Map<String, Value>) -> Result<(), String> {
     let content = serde_json::to_string_pretty(config)
         .map_err(|e| format!("Failed to serialize Scoop config: {}", e))?;
     fs::write(&path, content).map_err(|e| format!("Failed to write to {:?}: {}", path, e))
+}
+
+/// Mirror the proxy configuration into Scoop's own `config.json` so package
+/// installs, updates, and bucket fetches follow the same setting.
+///
+/// Scoop semantics (see its `lib/download.ps1`):
+/// - key absent → follow the Windows system proxy
+/// - `"none"` → connect directly
+/// - `[user:pass@]host:port` → use that HTTP proxy
+pub(crate) fn sync_scoop_proxy(config: &crate::proxy::ProxyConfig) -> Result<(), String> {
+    use crate::proxy::ProxyMode;
+
+    let mut scoop_config = read_scoop_config()?;
+
+    let desired: Option<String> = match config.mode {
+        ProxyMode::System => None,
+        ProxyMode::None => Some("none".to_string()),
+        ProxyMode::Custom => match crate::proxy::scoop_proxy_address(&config.url) {
+            Some(address) => Some(address),
+            // Scoop only supports HTTP proxies; leave its config untouched for
+            // proxy types it cannot use (for example SOCKS).
+            None => return Ok(()),
+        },
+    };
+
+    let current = scoop_config
+        .get("proxy")
+        .and_then(Value::as_str)
+        .map(String::from);
+    if current == desired {
+        return Ok(());
+    }
+
+    match desired {
+        Some(value) => {
+            scoop_config.insert("proxy".to_string(), Value::String(value));
+        }
+        None => {
+            scoop_config.remove("proxy");
+        }
+    }
+
+    write_scoop_config(&scoop_config)
 }
 
 /// Tell Scoop that rScoop has just refreshed its buckets. Without this,
