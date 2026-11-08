@@ -9,6 +9,8 @@
 | 功能 | 一句话说明 | 关键文件/入口 | 引入提交 |
 | ---- | ---------- | -------------- | -------- |
 | 网络代理设置 | 自动检测 Windows 系统代理或自定义代理，统一应用到 Scoop 命令、Bucket 下载与 rScoop 自身网络请求 | `src-tauri/src/proxy.rs`、`src-tauri/src/commands/proxy.rs`、`src/components/page/settings/ProxySettings.tsx` | `441cdf6` |
+| 检查状态后台续跑 | 点击「检查状态」后切换页面仍继续检查，返回时加载状态与结果保留 | `src/stores/scoopStatusStore.ts`、`src/hooks/useInstalledPackages.ts` | `2ca2f6b` |
+| 全部更新容错 | 「全部更新」逐个软件包更新，单个失败记录警告后继续，部分失败以警告状态结束 | `src-tauri/src/operations.rs`、`src-tauri/src/commands/scoop.rs`、`src/stores/operations.ts` | `e0958a6` |
 <!-- vibe-feature-registry:end -->
 
 <div align="center">

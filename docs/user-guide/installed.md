@@ -19,7 +19,7 @@ Everything Scoop has installed on your machine, in one view.
 
 ## Package operations
 
-- **Update** individual packages or hit **Update All**
+- **Update** individual packages or hit **Update All**. Update All updates each pending package one by one, so a package that fails is skipped and the remaining packages still update.
 - **Hold** a package to lock it at the current version (prevents updates)
 - **Uninstall** packages
 - **Switch versions** if a package has multiple versions installed
@@ -38,4 +38,4 @@ The package list refreshes automatically after you close the details modal.
 
 ## Scoop status check
 
-Hit **Check Scoop Status** to run diagnostics. This checks Git and 7-Zip availability, bucket health, and other common issues. You can install missing helpers directly from the results.
+Hit **Check Scoop Status** to refresh the buckets and check whether Scoop, the buckets or installed packages need updates. The check keeps running if you switch to another page; its loading state and result are kept when you come back.
