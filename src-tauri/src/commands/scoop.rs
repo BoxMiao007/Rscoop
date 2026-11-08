@@ -227,6 +227,31 @@ pub async fn execute_scoop(
     }
 }
 
+/// Run one step of a multi-package operation.
+///
+/// Identical to [`execute_scoop`] except it does NOT run the post-update
+/// manifest review. Callers that run many steps (e.g. "update all") should call
+/// `manifest_review::after_update` once after the last step, otherwise the
+/// review would rescan every bucket per package and emit duplicate warnings.
+pub async fn execute_scoop_step(
+    app: AppHandle,
+    op: ScoopOp,
+    package: Option<&str>,
+    bucket: Option<&str>,
+) -> Result<(), String> {
+    let args = build_scoop_args(op, package, bucket)?;
+    let label = operation_name(op, package)?;
+    let cmd = scoop_cmd(app.clone(), args)
+        .label(label.clone())
+        .interpreter(scoop_interpreter());
+    let outcome = run_operation(app, cmd).await?;
+    if outcome.is_success() {
+        Ok(())
+    } else {
+        Err(format!("{} failed: {}", label, outcome.message()))
+    }
+}
+
 pub async fn run_scoop_operation(
     app: AppHandle,
     args: Vec<String>,

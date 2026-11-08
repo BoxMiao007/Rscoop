@@ -3,40 +3,20 @@ import { invoke } from "@tauri-apps/api/core";
 import { createStoredSignal } from "./createStoredSignal";
 import heldStore from "../stores/held";
 import installedPackagesStore from "../stores/installedPackagesStore";
+import scoopStatusStore from "../stores/scoopStatusStore";
 import { usePackageInfo } from "./usePackageInfo";
 import operationsStore from "../stores/operations";
 import type { ScoopPackage } from "../types/scoop";
 import { getErrorMessage } from "../utils/errors";
 
+export type { AppStatusInfo, ScoopStatus } from "../stores/scoopStatusStore";
+
 type SortKey = 'name' | 'version' | 'source' | 'updated';
-
-// Types for scoop status
-export interface AppStatusInfo {
-  name: string;
-  installed_version: string;
-  latest_version?: string;
-  info: string[];
-  is_outdated: boolean;
-  is_failed: boolean;
-  is_held: boolean;
-  is_deprecated: boolean;
-  is_removed: boolean;
-}
-
-export interface ScoopStatus {
-  scoop_needs_update: boolean;
-  bucket_needs_update: boolean;
-  network_failure: boolean;
-  apps_with_issues: AppStatusInfo[];
-  is_everything_ok: boolean;
-}
 
 export function useInstalledPackages() {
   const { packages, loading, error, uniqueBuckets, isCheckingForUpdates, isPackageVersioned, fetch, refetch } = installedPackagesStore;
+  const { scoopStatus, statusLoading, statusError, checkScoopStatus } = scoopStatusStore;
   const [operatingOn, setOperatingOn] = createSignal<string | null>(null);
-  const [scoopStatus, setScoopStatus] = createSignal<ScoopStatus | null>(null);
-  const [statusLoading, setStatusLoading] = createSignal(false);
-  const [statusError, setStatusError] = createSignal<string | null>(null);
 
   const packageInfo = usePackageInfo();
 
@@ -52,27 +32,6 @@ export function useInstalledPackages() {
 
   const checkForUpdates = () => {
     installedPackagesStore.checkForUpdates();
-  };
-
-  const checkScoopStatus = async (): Promise<ScoopStatus | null> => {
-    setStatusLoading(true);
-    setStatusError(null);
-    try {
-      // First update buckets to ensure status check is accurate
-      await invoke("update_all_buckets");
-      // Then refresh the packages list to catch any CLI installations
-      await refetch();
-      const status = await invoke<ScoopStatus>("check_scoop_status");
-      setScoopStatus(status);
-      return status;
-    } catch (err) {
-      const errorMsg = getErrorMessage(err);
-      console.error("Failed to check scoop status:", errorMsg);
-      setStatusError(errorMsg);
-      return null;
-    } finally {
-      setStatusLoading(false);
-    }
   };
 
   const fetchInstalledPackages = () => {
@@ -166,7 +125,11 @@ export function useInstalledPackages() {
   };
 
   const handleUpdateAll = () => {
-    operationsStore.queueUpdateAll((wasSuccess) => {
+    // 明确传入本次需要更新的包名，后端逐个更新并在单个失败时继续下一个。
+    const packagesToUpdate = packages()
+      .filter(p => !!p.available_version && !heldStore.isHeld(p.name) && !p.is_versioned_install)
+      .map(p => p.name);
+    operationsStore.queueUpdateAll(packagesToUpdate, (wasSuccess) => {
       if (wasSuccess) refreshAfterOperation();
     });
   };

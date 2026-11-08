@@ -277,7 +277,7 @@ function createOperationsStore() {
     | { type: "scan-and-install"; package: string; bucket: string; version: string | null }
     | { type: "install"; package: string; bucket: string; version: string | null }
     | { type: "update"; package: string }
-    | { type: "update-all" }
+    | { type: "update-all"; packages: string[] }
     | { type: "uninstall"; package: string; bucket: string; auto_clear_cache: boolean }
     | { type: "cleanup-apps" | "cleanup-cache" };
 
@@ -353,11 +353,11 @@ function createOperationsStore() {
     await enqueue({ type: "update", package: pkg.name });
   }
 
-  async function queueUpdateAll(onComplete?: (wasSuccess: boolean) => void) {
+  async function queueUpdateAll(packages: string[] = [], onComplete?: (wasSuccess: boolean) => void) {
     if (onComplete) {
       onNextFinish((op) => op.kind === "update-all", onComplete);
     }
-    await enqueue({ type: "update-all" });
+    await enqueue({ type: "update-all", packages });
   }
 
   async function queueUninstall(pkg: ScoopPackage, onComplete?: (wasSuccess: boolean) => void) {
