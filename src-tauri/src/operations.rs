@@ -158,7 +158,12 @@ pub enum EnqueueAction {
     Update {
         package: String,
     },
-    UpdateAll,
+    UpdateAll {
+        /// Packages to update, resolved by the caller (the UI's current
+        /// updatable set). Empty falls back to Scoop's own `update *`.
+        #[serde(default)]
+        packages: Vec<String>,
+    },
     Uninstall {
         package: String,
         bucket: String,
@@ -197,7 +202,7 @@ impl EnqueueAction {
                 _ => format!("Installing {}", package),
             },
             EnqueueAction::Update { package } => format!("Updating {}", package),
-            EnqueueAction::UpdateAll => "Updating all packages".to_string(),
+            EnqueueAction::UpdateAll { .. } => "Updating all packages".to_string(),
             EnqueueAction::Uninstall { package, .. } => format!("Uninstalling {}", package),
             EnqueueAction::ClearCache { package, .. } => format!("Clearing cache for {}", package),
             EnqueueAction::CleanupApps => "Cleaning up old app versions".to_string(),
@@ -212,7 +217,7 @@ impl EnqueueAction {
         match self {
             EnqueueAction::Install { .. } => OperationKind::Install,
             EnqueueAction::Update { .. } => OperationKind::Update,
-            EnqueueAction::UpdateAll => OperationKind::UpdateAll,
+            EnqueueAction::UpdateAll { .. } => OperationKind::UpdateAll,
             EnqueueAction::Uninstall { .. } => OperationKind::Uninstall,
             EnqueueAction::ClearCache { .. } => OperationKind::ClearCache,
             EnqueueAction::CleanupApps | EnqueueAction::CleanupCache => OperationKind::Cleanup,
@@ -988,7 +993,9 @@ pub fn start_synthetic(
             kind,
             package_name,
             // Sentinel — never executed because no runner is spawned.
-            action: EnqueueAction::UpdateAll,
+            action: EnqueueAction::UpdateAll {
+                packages: Vec::new(),
+            },
             chain: None,
             auto_chain: true,
         }));
@@ -1219,6 +1226,22 @@ fn update_current_title(app: &AppHandle, new_title: String) {
     });
 }
 
+/// Run `update_one` for each package in order, continuing past failures.
+/// Returns the names of the packages that failed, in input order.
+async fn run_updates_continuing<F, Fut>(packages: &[String], mut update_one: F) -> Vec<String>
+where
+    F: FnMut(&str) -> Fut,
+    Fut: std::future::Future<Output = Result<(), String>>,
+{
+    let mut failed = Vec::new();
+    for package in packages {
+        if update_one(package).await.is_err() {
+            failed.push(package.clone());
+        }
+    }
+    failed
+}
+
 async fn execute_action(app: &AppHandle, action: &EnqueueAction) -> Result<(), String> {
     match action {
         EnqueueAction::Install {
@@ -1241,8 +1264,75 @@ async fn execute_action(app: &AppHandle, action: &EnqueueAction) -> Result<(), S
         EnqueueAction::Update { package } => {
             scoop::execute_scoop(app.clone(), ScoopOp::Update, Some(package), None).await
         }
-        EnqueueAction::UpdateAll => {
-            scoop::execute_scoop(app.clone(), ScoopOp::UpdateAll, None, None).await
+        EnqueueAction::UpdateAll { packages } => {
+            // No explicit package list (legacy callers): keep Scoop's batch update.
+            if packages.is_empty() {
+                return scoop::execute_scoop(app.clone(), ScoopOp::UpdateAll, None, None).await;
+            }
+
+            let total = packages.len();
+            let failed = run_updates_continuing(packages, |package| {
+                let app = app.clone();
+                let package = package.to_string();
+                async move {
+                    append_output(&app, format!("Updating {}...", package), "stdout");
+                    // Run each package as its own Scoop command so a single failure
+                    // cannot abort the remaining updates (Scoop's `update *` aborts
+                    // the whole batch on the first error).
+                    match scoop::execute_scoop_step(
+                        app.clone(),
+                        ScoopOp::Update,
+                        Some(package.as_str()),
+                        None,
+                    )
+                    .await
+                    {
+                        Ok(()) => Ok(()),
+                        Err(error) => {
+                            let message = format!("Failed to update {}: {}", package, error);
+                            append_output(&app, message.clone(), "stderr");
+                            push_operation_warning(
+                                &app,
+                                OperationWarning {
+                                    code: "scoop.update.failed".into(),
+                                    message,
+                                    manifest: None,
+                                },
+                            );
+                            Err(error)
+                        }
+                    }
+                }
+            })
+            .await;
+
+            // One manifest review for the whole batch instead of one per package.
+            if failed.len() < total {
+                crate::manifest_review::after_update(app, None).await;
+            }
+
+            if failed.is_empty() {
+                Ok(())
+            } else if failed.len() == total {
+                Err(format!(
+                    "All {} package updates failed: {}",
+                    total,
+                    failed.join(", ")
+                ))
+            } else {
+                append_output(
+                    app,
+                    format!(
+                        "{} of {} packages failed to update: {}",
+                        failed.len(),
+                        total,
+                        failed.join(", ")
+                    ),
+                    "stderr",
+                );
+                // Partial success: the warnings above downgrade the result to "warning".
+                Ok(())
+            }
         }
         EnqueueAction::Uninstall {
             package, bucket, ..
@@ -1284,7 +1374,7 @@ async fn execute_action(app: &AppHandle, action: &EnqueueAction) -> Result<(), S
 fn pending_needs_bucket_refresh(pending: &PendingOp) -> bool {
     matches!(
         pending.action,
-        EnqueueAction::Install { .. } | EnqueueAction::Update { .. } | EnqueueAction::UpdateAll
+        EnqueueAction::Install { .. } | EnqueueAction::Update { .. } | EnqueueAction::UpdateAll { .. }
     ) || matches!(
         pending.chain.as_deref(),
         Some(EnqueueAction::Install { .. })
@@ -1349,7 +1439,7 @@ async fn run_post_hooks(app: &AppHandle, pending: &PendingOp, result: &Result<()
         EnqueueAction::Install { .. }
         | EnqueueAction::Uninstall { .. }
         | EnqueueAction::Update { .. }
-        | EnqueueAction::UpdateAll => {
+        | EnqueueAction::UpdateAll { .. } => {
             invalidate_manifest_cache(&state.scoop_path()).await;
             invalidate_installed_cache(state.clone()).await;
             if result.is_ok() {
@@ -1395,5 +1485,28 @@ mod tests {
 
         assert!(pending_needs_bucket_refresh(&operation));
         assert!(!matches!(operation.action, EnqueueAction::Install { .. }));
+    }
+
+    #[tokio::test]
+    async fn update_all_continues_after_a_failure() {
+        let packages = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        let attempted = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+
+        let failed = run_updates_continuing(&packages, |package| {
+            let attempted = attempted.clone();
+            let package = package.to_string();
+            async move {
+                attempted.lock().unwrap().push(package.clone());
+                if package == "b" {
+                    Err("boom".to_string())
+                } else {
+                    Ok(())
+                }
+            }
+        })
+        .await;
+
+        assert_eq!(failed, vec!["b".to_string()]);
+        assert_eq!(*attempted.lock().unwrap(), packages);
     }
 }
