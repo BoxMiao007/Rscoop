@@ -56,10 +56,10 @@ function AppStatusTable(props: { apps: AppStatusInfo[] }) {
               <td>
                 <div class="flex flex-wrap gap-1">
                   {app.is_held && (
-                    <div class="badge badge-sm badge-warning">{t("modal.scoopStatus.held")}</div>
+                    <div class="badge badge-sm badge-warning whitespace-nowrap">{t("modal.scoopStatus.held")}</div>
                   )}
                   {app.info.filter((info: string) => !info.includes("Held package")).map((info: string) => (
-                    <div class="badge badge-sm" classList={{
+                    <div class="badge badge-sm whitespace-nowrap" classList={{
                       "badge-warning": info.includes("Deprecated"),
                       "badge-error": info.includes("failed") || info.includes("removed"),
                       "badge-info": !info.includes("Deprecated") && !info.includes("failed") && !info.includes("removed")
@@ -68,7 +68,7 @@ function AppStatusTable(props: { apps: AppStatusInfo[] }) {
                     </div>
                   ))}
                   {app.is_outdated && (
-                    <div class="badge badge-sm badge-success">{t("modal.scoopStatus.updateAvailable")}</div>
+                    <div class="badge badge-sm badge-success whitespace-nowrap">{t("modal.scoopStatus.updateAvailable")}</div>
                   )}
                 </div>
               </td>
